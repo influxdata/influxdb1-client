@@ -2110,6 +2110,28 @@ func (a Tags) Get(key []byte) []byte {
 	return nil
 }
 
+// GetString returns the string value for a string key.
+func (a Tags) GetString(key string) string {
+	return string(a.Get([]byte(key)))
+}
+
+// Set sets the value for a key.
+func (a *Tags) Set(key, value []byte) {
+	for i, t := range *a {
+		if bytes.Equal(t.Key, key) {
+			(*a)[i].Value = value
+			return
+		}
+	}
+	*a = append(*a, Tag{Key: key, Value: value})
+	sort.Sort(*a)
+}
+
+// SetString sets the string value for a string key.
+func (a *Tags) SetString(key, value string) {
+	a.Set([]byte(key), []byte(value))
+}
+
 // Map returns a map representation of the tags.
 func (a Tags) Map() map[string]string {
 	m := make(map[string]string, len(a))
