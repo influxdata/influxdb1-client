@@ -103,8 +103,16 @@ func (uc *udpclient) Write(bp BatchPoints) error {
 	return delayedError
 }
 
+func (uc *udpclient) WriteWithHeaders(bp BatchPoints, headers map[string]string) error {
+	return fmt.Errorf("Writing with custom HTTP headers via UDP is not supported")
+}
+
 func (uc *udpclient) Query(q Query) (*Response, error) {
 	return nil, fmt.Errorf("Querying via UDP is not supported")
+}
+
+func (uc *udpclient) QueryWithHeaders(q Query, headers map[string]string) (*Response, error) {
+	return nil, fmt.Errorf("Querying with custom HTTP headers via UDP is not supported")
 }
 
 func (uc *udpclient) QueryAsChunk(q Query) (*ChunkedResponse, error) {
