@@ -937,3 +937,47 @@ func TestClient_QueryAsChunk(t *testing.T) {
 		t.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
 	}
 }
+
+func TestClient_ReadStatementId(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data := Response{
+			Results: []Result{{
+				StatementId: 1,
+				Series:      nil,
+				Messages:    nil,
+				Err:         "",
+			}},
+			Err: "",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Influxdb-Version", "1.3.1")
+		w.WriteHeader(http.StatusOK)
+		enc := json.NewEncoder(w)
+		_ = enc.Encode(data)
+		_ = enc.Encode(data)
+	}))
+	defer ts.Close()
+
+	config := HTTPConfig{Addr: ts.URL}
+	c, err := NewHTTPClient(config)
+	if err != nil {
+		t.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+	}
+
+	query := Query{Chunked: true}
+	resp, err := c.QueryAsChunk(query)
+	defer resp.Close()
+	if err != nil {
+		t.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+	}
+
+	r, err := resp.NextResponse()
+
+	if err != nil {
+		t.Fatalf("expected success, got %s", err)
+	}
+
+	if r.Results[0].StatementId != 1 {
+		t.Fatalf("expected statement_id = 1, got %d", r.Results[0].StatementId)
+	}
+}
