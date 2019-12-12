@@ -100,7 +100,7 @@ type ContextClient interface {
 	QueryAsChunkContext(ctx context.Context, q Query) (*ChunkedResponse, error)
 }
 
-// NewHTTPClient returns a new Client from the provided config.
+// NewHTTPClient returns a new ContextClient from the provided config.
 // Client is safe for concurrent use by multiple goroutines.
 func NewHTTPClient(conf HTTPConfig) (ContextClient, error) {
 	if conf.UserAgent == "" {
@@ -522,6 +522,7 @@ func (c *client) Query(q Query) (*Response, error) {
 	return c.QueryContext(context.Background(), q)
 }
 
+// Query sends a command with the given context to the server and returns the Response.
 func (c *client) QueryContext(ctx context.Context, q Query) (*Response, error) {
 	req, err := c.createDefaultRequest(ctx, q)
 	if err != nil {
@@ -596,6 +597,7 @@ func (c *client) QueryAsChunk(q Query) (*ChunkedResponse, error) {
 	return c.QueryAsChunkContext(context.Background(), q)
 }
 
+// QueryAsChunk sends a command with the given context to the server and returns the Response.
 func (c *client) QueryAsChunkContext(ctx context.Context, q Query) (*ChunkedResponse, error) {
 	req, err := c.createDefaultRequest(ctx, q)
 	if err != nil {
