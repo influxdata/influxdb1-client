@@ -3,6 +3,7 @@ package client // import "github.com/influxdata/influxdb1-client/v2"
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -86,9 +87,22 @@ type Client interface {
 	Close() error
 }
 
+type ContextClient interface {
+	Client
+
+	// Write takes a BatchPoints object and writes all Points to InfluxDB with the given context.
+	WriteContext(ctx context.Context, bp BatchPoints) error
+
+	// QueryAsChunk makes an InfluxDB Query with the given context on the database.
+	QueryContext(ctx context.Context, q Query) (*Response, error)
+
+	// QueryAsChunk makes an InfluxDB Query with the given context on the database.
+	QueryAsChunkContext(ctx context.Context, q Query) (*ChunkedResponse, error)
+}
+
 // NewHTTPClient returns a new Client from the provided config.
 // Client is safe for concurrent use by multiple goroutines.
-func NewHTTPClient(conf HTTPConfig) (Client, error) {
+func NewHTTPClient(conf HTTPConfig) (ContextClient, error) {
 	if conf.UserAgent == "" {
 		conf.UserAgent = "InfluxDBClient"
 	}
@@ -364,6 +378,10 @@ func NewPointFrom(pt models.Point) *Point {
 }
 
 func (c *client) Write(bp BatchPoints) error {
+	return c.WriteContext(context.Background(), bp)
+}
+
+func (c *client) WriteContext(ctx context.Context, bp BatchPoints) error {
 	var b bytes.Buffer
 
 	for _, p := range bp.Points() {
@@ -382,7 +400,7 @@ func (c *client) Write(bp BatchPoints) error {
 	u := c.url
 	u.Path = path.Join(u.Path, "write")
 
-	req, err := http.NewRequest("POST", u.String(), &b)
+	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), &b)
 	if err != nil {
 		return err
 	}
@@ -501,7 +519,11 @@ type Result struct {
 
 // Query sends a command to the server and returns the Response.
 func (c *client) Query(q Query) (*Response, error) {
-	req, err := c.createDefaultRequest(q)
+	return c.QueryContext(context.Background(), q)
+}
+
+func (c *client) QueryContext(ctx context.Context, q Query) (*Response, error) {
+	req, err := c.createDefaultRequest(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -571,7 +593,11 @@ func (c *client) Query(q Query) (*Response, error) {
 
 // QueryAsChunk sends a command to the server and returns the Response.
 func (c *client) QueryAsChunk(q Query) (*ChunkedResponse, error) {
-	req, err := c.createDefaultRequest(q)
+	return c.QueryAsChunkContext(context.Background(), q)
+}
+
+func (c *client) QueryAsChunkContext(ctx context.Context, q Query) (*ChunkedResponse, error) {
+	req, err := c.createDefaultRequest(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +646,7 @@ func checkResponse(resp *http.Response) error {
 	return nil
 }
 
-func (c *client) createDefaultRequest(q Query) (*http.Request, error) {
+func (c *client) createDefaultRequest(ctx context.Context, q Query) (*http.Request, error) {
 	u := c.url
 	u.Path = path.Join(u.Path, "query")
 
@@ -629,7 +655,7 @@ func (c *client) createDefaultRequest(q Query) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
