@@ -20,6 +20,11 @@ import (
 	"github.com/influxdata/influxdb1-client/models"
 )
 
+const (
+	MIMETypeJSON = "application/json"
+	MIMETypeCSV  = "text/csv"
+)
+
 // HTTPConfig is the config data needed to create an HTTP Client.
 type HTTPConfig struct {
 	// Addr should be of the form "http://host:port"
@@ -81,6 +86,10 @@ type Client interface {
 	// QueryAsChunk makes an InfluxDB Query on the database. This will fail if using
 	// the UDP client.
 	QueryAsChunk(q Query) (*ChunkedResponse, error)
+
+	// QueryAsCSV makes an InfluxDB Query on the database. This will fail if using
+	// the UDP client.
+	QueryAsCSV(q Query) (*CSVResponse, error)
 
 	// Close releases any resources a Client may be using.
 	Close() error
@@ -485,6 +494,20 @@ func (r *Response) Error() error {
 	return nil
 }
 
+// CSVResponse represents a list of statement results in CSV form.
+type CSVResponse struct {
+	Body          io.ReadCloser
+	ContentLength int64
+}
+
+func (r *CSVResponse) Read(p []byte) (int, error) {
+	return r.Body.Read(p)
+}
+
+func (r *CSVResponse) Close() error {
+	return r.Body.Close()
+}
+
 // Message represents a user message.
 type Message struct {
 	Level string
@@ -592,6 +615,37 @@ func (c *client) QueryAsChunk(q Query) (*ChunkedResponse, error) {
 	return NewChunkedResponse(resp.Body), nil
 }
 
+// QueryAsCSV sends a command to the server and returns the CSVResponse.
+func (c *client) QueryAsCSV(q Query) (*CSVResponse, error) {
+	req, err := c.createDefaultRequest(q)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Accept", MIMETypeCSV)
+
+	resp, err := c.httpClient.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := checkResponse(resp); err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received status code %d from server",
+			resp.StatusCode)
+	}
+
+	return &CSVResponse{
+		Body:          resp.Body,
+		ContentLength: resp.ContentLength,
+	}, nil
+}
+
 func checkResponse(resp *http.Response) error {
 	// If we lack a X-Influxdb-Version header, then we didn't get a response from influxdb
 	// but instead some other service. If the error code is also a 500+ code, then some
@@ -607,15 +661,18 @@ func checkResponse(resp *http.Response) error {
 
 	// If we get an unexpected content type, then it is also not from influx direct and therefore
 	// we want to know what we received and what status code was returned for debugging purposes.
-	if cType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); cType != "application/json" {
+	if cType, _, _ := mime.ParseMediaType(resp.Header.Get(
+		"Content-Type")); cType != MIMETypeJSON && cType != MIMETypeCSV {
 		// Read up to 1kb of the body to help identify downstream errors and limit the impact of things
 		// like downstream serving a large file
 		body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 1024))
 		if err != nil || len(body) == 0 {
-			return fmt.Errorf("expected json response, got empty body, with status: %v", resp.StatusCode)
+			return fmt.Errorf("expected json or csv response, got empty body, with status: %v",
+				resp.StatusCode)
 		}
 
-		return fmt.Errorf("expected json response, got %q, with status: %v and response body: %q", cType, resp.StatusCode, body)
+		return fmt.Errorf("expected json or csv response, got %q, "+
+			"with status: %v and response body: %q", cType, resp.StatusCode, body)
 	}
 	return nil
 }
