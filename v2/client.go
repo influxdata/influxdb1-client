@@ -496,14 +496,18 @@ func (r *Response) Error() error {
 
 // CSVResponse represents a list of statement results in CSV form.
 type CSVResponse struct {
-	Body          io.ReadCloser
+	// Body is the content of the response.
+	Body io.ReadCloser
+	// ContentLength is the length of the Body.
 	ContentLength int64
 }
 
+// Read fills the given byte slice with data from CSVResponse's Body.
 func (r *CSVResponse) Read(p []byte) (int, error) {
 	return r.Body.Read(p)
 }
 
+// Close closes the CSVResponse.
 func (r *CSVResponse) Close() error {
 	return r.Body.Close()
 }
