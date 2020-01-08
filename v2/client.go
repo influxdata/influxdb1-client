@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	MIMETypeJSON = "application/json"
-	MIMETypeCSV  = "text/csv"
+	mimeTypeJSON = "application/json"
+	mimeTypeCSV  = "text/csv"
 )
 
 // HTTPConfig is the config data needed to create an HTTP Client.
@@ -627,7 +627,7 @@ func (c *client) QueryAsCSV(q Query) (*CSVResponse, error) {
 		return nil, err
 	}
 
-	req.Header.Set("Accept", MIMETypeCSV)
+	req.Header.Set("Accept", mimeTypeCSV)
 
 	resp, err := c.httpClient.Do(req)
 
@@ -666,7 +666,7 @@ func checkResponse(resp *http.Response) error {
 	// If we get an unexpected content type, then it is also not from influx direct and therefore
 	// we want to know what we received and what status code was returned for debugging purposes.
 	if cType, _, _ := mime.ParseMediaType(resp.Header.Get(
-		"Content-Type")); cType != MIMETypeJSON && cType != MIMETypeCSV {
+		"Content-Type")); cType != mimeTypeJSON && cType != mimeTypeCSV {
 		// Read up to 1kb of the body to help identify downstream errors and limit the impact of things
 		// like downstream serving a large file
 		body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 1024))
