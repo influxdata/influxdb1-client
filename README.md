@@ -21,7 +21,7 @@ import(
 The following example creates a new client to the InfluxDB host on localhost:8086 and runs a query for the measuring the average value of `cpu_load` from the `mydb` database over the last 10 timesteps. 
 ``` go
 func ExampleClient_query() {
-var (
+	var (
 		numTimesteps = 10
 		cpu_load float64
 	)
