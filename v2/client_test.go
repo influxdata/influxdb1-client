@@ -802,15 +802,37 @@ func TestClient_PointFields(t *testing.T) {
 }
 
 func TestBatchPoints_PrecisionError(t *testing.T) {
-	_, err := NewBatchPoints(BatchPointsConfig{Precision: "foobar"})
-	if err == nil {
-		t.Errorf("Precision: foobar should have errored")
+	tests := []struct {
+		precision     string
+		wantPrecision string
+		wantErr       bool
+	}{
+		{precision: "", wantPrecision: "ns", wantErr: false},
+		{precision: "ns", wantPrecision: "ns", wantErr: false},
+		{precision: "u", wantPrecision: "u", wantErr: false},
+		{precision: "ms", wantPrecision: "ms", wantErr: false},
+		{precision: "s", wantPrecision: "s", wantErr: false},
+		{precision: "m", wantPrecision: "m", wantErr: false},
+		{precision: "h", wantPrecision: "h", wantErr: false},
+		{precision: "foobar", wantPrecision: "ns", wantErr: true},
+		{precision: "us", wantPrecision: "ns", wantErr: true},
 	}
 
-	bp, _ := NewBatchPoints(BatchPointsConfig{Precision: "ns"})
-	err = bp.SetPrecision("foobar")
-	if err == nil {
-		t.Errorf("Precision: foobar should have errored")
+	for _, test := range tests {
+		_, err := NewBatchPoints(BatchPointsConfig{Precision: test.precision})
+		if (err != nil) != test.wantErr {
+			t.Errorf("Precision \"%s\": error = %v, wantErr %v", test.precision, err, test.wantErr)
+		}
+
+		bp, _ := NewBatchPoints(BatchPointsConfig{Precision: "ns"})
+		err = bp.SetPrecision(test.precision)
+		if (err != nil) != test.wantErr {
+			t.Errorf("SetPrecision(\"%s\"): error = %v, wantErr %v", test.precision, err, test.wantErr)
+		}
+
+		if got := bp.Precision(); got != test.wantPrecision {
+			t.Errorf("Precision() returned \"%s\", want \"%s\"", got, test.wantPrecision)
+		}
 	}
 }
 
