@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	client "github.com/influxdata/influxdb1-client"
+	client "github.com/senseyeio/influxdb1-client"
 )
 
 func ExampleNewClient() {

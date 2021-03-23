@@ -1,6 +1,4 @@
-// Package client implements a now-deprecated client for InfluxDB;
-// use github.com/influxdata/influxdb1-client/v2 instead.
-package client // import "github.com/influxdata/influxdb1-client"
+package client // import "github.com/senseyeio/influxdb1-client"
 
 import (
 	"bytes"
@@ -19,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/influxdata/influxdb1-client/models"
+	"github.com/senseyeio/influxdb1-client/models"
 )
 
 const (
