@@ -1,5 +1,5 @@
 // Package client (v2) is the current official Go client for InfluxDB.
-package client // import "github.com/influxdata/influxdb1-client/v2"
+package client // import "github.com/senseyeio/influxdb1-client/v2"
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/influxdata/influxdb1-client/models"
+	"github.com/senseyeio/influxdb1-client/models"
 )
 
 type ContentEncoding string
@@ -422,7 +422,7 @@ func (c *client) Write(bp BatchPoints) error {
 	if c.encoding != DefaultEncoding {
 		req.Header.Set("Content-Encoding", string(c.encoding))
 	}
-	req.Header.Set("Content-Type", "")
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.useragent)
 	if c.username != "" {
 		req.SetBasicAuth(c.username, c.password)
@@ -673,7 +673,7 @@ func (c *client) createDefaultRequest(q Query) (*http.Request, error) {
 		return nil, err
 	}
 
-	req.Header.Set("Content-Type", "")
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.useragent)
 
 	if c.username != "" {
