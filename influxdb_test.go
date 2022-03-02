@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/influxdata/influxdb1-client"
+	client "github.com/influxdata/influxdb1-client"
 )
 
 func BenchmarkWrite(b *testing.B) {
@@ -746,8 +746,10 @@ func TestClient_Timeout(t *testing.T) {
 	_, err = c.Query(query)
 	if err == nil {
 		t.Fatalf("unexpected success. expected timeout error")
-	} else if !strings.Contains(err.Error(), "request canceled") &&
-		!strings.Contains(err.Error(), "use of closed network connection") {
+		return
+	}
+	if !strings.Contains(err.Error(), "request canceled") &&
+		!strings.Contains(err.Error(), "use of closed network connection") && !strings.Contains(err.Error(), "Timeout") {
 		t.Fatalf("unexpected error. expected 'request canceled' error, got %v", err)
 	}
 }
