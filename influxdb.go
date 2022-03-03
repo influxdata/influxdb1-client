@@ -6,9 +6,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
+	//"encoding/json"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"io/ioutil"
 	"net"
@@ -21,6 +22,8 @@ import (
 
 	"github.com/influxdata/influxdb1-client/models"
 )
+
+var json = jsoniter.ConfigFastest
 
 const (
 	// DefaultHost is the default host used to connect to an InfluxDB instance
@@ -573,7 +576,7 @@ func (r *duplexReader) Read(p []byte) (n int, err error) {
 // ChunkedResponse represents a response from the server that
 // uses chunking to stream the output.
 type ChunkedResponse struct {
-	dec    *json.Decoder
+	dec    *jsoniter.Decoder
 	duplex *duplexReader
 	buf    bytes.Buffer
 }
@@ -717,7 +720,7 @@ func normalizeFields(fields map[string]interface{}) map[string]interface{} {
 
 	for k, v := range fields {
 		switch v := v.(type) {
-		case json.Number:
+		case jsoniter.Number:
 			jv, e := v.Float64()
 			if e != nil {
 				panic(fmt.Sprintf("unable to convert json.Number to float64: %s", e))
