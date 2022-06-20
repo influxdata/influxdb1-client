@@ -119,15 +119,16 @@ func NewHTTPClient(conf HTTPConfig) (Client, error) {
 		return nil, fmt.Errorf("unsupported encoding %s", conf.WriteEncoding)
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: conf.InsecureSkipVerify,
-		},
-		Proxy: conf.Proxy,
-	}
+	tr := http.DefaultTransport.(*http.Transport)
+	tr.Proxy = conf.Proxy
 	if conf.TLSConfig != nil {
 		tr.TLSClientConfig = conf.TLSConfig
+	} else {
+		tr.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: conf.InsecureSkipVerify,
+		}
 	}
+
 	return &client{
 		url:       *u,
 		username:  conf.Username,
