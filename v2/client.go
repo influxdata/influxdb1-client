@@ -57,6 +57,26 @@ type HTTPConfig struct {
 	// Proxy configures the Proxy function on the HTTP client.
 	Proxy func(req *http.Request) (*url.URL, error)
 
+	// DisableKeepAlives gets passed to the http client, if true, it will
+	// only use the connection to the server for a single HTTP Request
+	DisableKeepAlives bool
+
+	// MaxIdleConns gets passed to the http client, controls the maximum
+	// number of idle(keep-alive) connections across all hosts.
+	// Zero means no limit.
+	MaxIdleConns int
+
+	// MaxIdleConnsPerHost gets passed to the http client, if non-zero,
+	// controls the maximum idle (keep-alive) connections to keep per-host.
+	// If zero, DefaultMaxIdleConnsPerHost is used.
+	MaxIdleConnsPerHost int
+
+	// MaxConnsPerHost gets passed to the http client, if non-zero,
+	// limits the total number of connections per host, including connections
+	// in the dialing, active, and idle states.
+	// Zero means no limit.
+	MaxConnsPerHost int
+  
 	// WriteEncoding specifies the encoding of write request
 	WriteEncoding ContentEncoding
 }
@@ -123,7 +143,11 @@ func NewHTTPClient(conf HTTPConfig) (Client, error) {
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: conf.InsecureSkipVerify,
 		},
-		Proxy: conf.Proxy,
+		Proxy:               conf.Proxy,
+		DisableKeepAlives:   conf.DisableKeepAlives,
+		MaxIdleConns:        conf.MaxIdleConns,
+		MaxIdleConnsPerHost: conf.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     conf.MaxConnsPerHost,
 	}
 	if conf.TLSConfig != nil {
 		tr.TLSClientConfig = conf.TLSConfig
