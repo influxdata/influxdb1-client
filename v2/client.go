@@ -244,7 +244,11 @@ func NewBatchPoints(conf BatchPointsConfig) (BatchPoints, error) {
 	if conf.Precision == "" {
 		conf.Precision = "ns"
 	}
-	if _, err := time.ParseDuration("1" + conf.Precision); err != nil {
+	switch conf.Precision {
+	case "", "n", "ns", "u", "ms", "s", "m", "h":
+		// it's valid
+	default:
+		err := fmt.Errorf("invalid precision %q (use n, u, ms, s, m or h)", conf.Precision)
 		return nil, err
 	}
 	bp := &batchpoints{
@@ -293,7 +297,14 @@ func (bp *batchpoints) RetentionPolicy() string {
 }
 
 func (bp *batchpoints) SetPrecision(p string) error {
-	if _, err := time.ParseDuration("1" + p); err != nil {
+	if p == "" {
+		p = "ns"
+	}
+	switch p {
+	case "", "n", "ns", "u", "ms", "s", "m", "h":
+		// it's valid
+	default:
+		err := fmt.Errorf("invalid precision %q (use n, u, ms, s, m or h)", p)
 		return err
 	}
 	bp.precision = p
