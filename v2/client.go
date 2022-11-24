@@ -85,9 +85,15 @@ type Client interface {
 	// Write takes a BatchPoints object and writes all Points to InfluxDB.
 	Write(bp BatchPoints) error
 
+	// WriteWithHeaders is the same as Write but with custom http headers.
+	WriteWithHeaders(bp BatchPoints, headers map[string]string) error
+
 	// Query makes an InfluxDB Query on the database. This will fail if using
 	// the UDP client.
 	Query(q Query) (*Response, error)
+
+	// QueryWithHeaders is the same as Query but with custom http headers.
+	QueryWithHeaders(q Query, headers map[string]string) (*Response, error)
 
 	// QueryAsChunk makes an InfluxDB Query on the database. This will fail if using
 	// the UDP client.
@@ -382,7 +388,7 @@ func NewPointFrom(pt models.Point) *Point {
 	return &Point{pt: pt}
 }
 
-func (c *client) Write(bp BatchPoints) error {
+func (c *client) write(bp BatchPoints, headers map[string]string) error {
 	var b bytes.Buffer
 
 	var w io.Writer
@@ -427,6 +433,9 @@ func (c *client) Write(bp BatchPoints) error {
 	if c.username != "" {
 		req.SetBasicAuth(c.username, c.password)
 	}
+	for header, value := range headers {
+		req.Header.Set(header, value)
+	}
 
 	params := req.URL.Query()
 	params.Set("db", bp.Database())
@@ -452,6 +461,16 @@ func (c *client) Write(bp BatchPoints) error {
 	}
 
 	return nil
+}
+
+// Write takes a BatchPoints object and writes all Points to InfluxDB.
+func (c *client) Write(bp BatchPoints) error {
+	return c.write(bp, make(map[string]string))
+}
+
+// WriteWithHeaders is the same as Write but with custom http headers.
+func (c *client) WriteWithHeaders(bp BatchPoints, headers map[string]string) error {
+	return c.write(bp, headers)
 }
 
 // Query defines a query to send to the server.
@@ -538,11 +557,13 @@ type Result struct {
 	Err         string `json:"error,omitempty"`
 }
 
-// Query sends a command to the server and returns the Response.
-func (c *client) Query(q Query) (*Response, error) {
+func (c *client) query(q Query, headers map[string]string) (*Response, error) {
 	req, err := c.createDefaultRequest(q)
 	if err != nil {
 		return nil, err
+	}
+	for header, value := range headers {
+		req.Header.Set(header, value)
 	}
 	params := req.URL.Query()
 	if q.Chunked {
@@ -609,6 +630,16 @@ func (c *client) Query(q Query) (*Response, error) {
 		return &response, fmt.Errorf("received status code %d from server", resp.StatusCode)
 	}
 	return &response, nil
+}
+
+// Query sends a command to the server and returns the Response.
+func (c *client) Query(q Query) (*Response, error) {
+	return c.query(q, make(map[string]string))
+}
+
+// QueryWithHeaders is the same as Query but with custom http headers.
+func (c *client) QueryWithHeaders(q Query, headers map[string]string) (*Response, error) {
+	return c.query(q, headers)
 }
 
 // QueryAsChunk sends a command to the server and returns the Response.
