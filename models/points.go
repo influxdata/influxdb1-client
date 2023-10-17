@@ -1,5 +1,5 @@
 // Package models implements basic objects used throughout the TICK stack.
-package models // import "github.com/influxdata/influxdb1-client/models"
+package models
 
 import (
 	"bytes"
@@ -619,14 +619,14 @@ func scanTags(buf []byte, i int, indices []int) (int, int, []int, error) {
 	)
 
 	for {
+		// Grow our indices slice if we have too many tags.
+		if commas >= len(indices) {
+			newIndics := make([]int, len(indices)*2)
+			copy(newIndics, indices)
+			indices = newIndics
+		}
 		switch state {
 		case tagKeyState:
-			// Grow our indices slice if we have too many tags.
-			if commas >= len(indices) {
-				newIndics := make([]int, cap(indices)*2)
-				copy(newIndics, indices)
-				indices = newIndics
-			}
 			indices[commas] = i
 			commas++
 
@@ -792,6 +792,7 @@ func scanFields(buf []byte, i int) (int, []byte, error) {
 				}
 				continue
 			}
+
 			// If next byte is not a double-quote, the value must be a boolean
 			if buf[i+1] != '"' {
 				var err error
@@ -1323,11 +1324,18 @@ func NewPoint(name string, tags Tags, fields Fields, t time.Time) (Point, error)
 		return nil, err
 	}
 
-	return &point{
+	fieldsBinary, err := fields.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	pt := &point{
 		key:    key,
 		time:   t,
-		fields: fields.MarshalBinary(),
-	}, nil
+		fields: fieldsBinary,
+	}
+
+	return pt, nil
 }
 
 // pointKey checks some basic requirements for valid points, and returns the
@@ -2301,7 +2309,7 @@ func (p *point) Reset() {
 // NOTE: uint64 is specifically not supported due to potential overflow when we decode
 // again later to an int64
 // NOTE2: uint is accepted, and may be 64 bits, and is for some reason accepted...
-func (p Fields) MarshalBinary() []byte {
+func (p Fields) MarshalBinary() ([]byte, error) {
 	var b []byte
 	keys := make([]string, 0, len(p))
 
@@ -2312,76 +2320,246 @@ func (p Fields) MarshalBinary() []byte {
 	// Not really necessary, can probably be removed.
 	sort.Strings(keys)
 
+	var err error
 	for i, k := range keys {
 		if i > 0 {
 			b = append(b, ',')
 		}
-		b = appendField(b, k, p[k])
+		b, err = appendField(b, k, p[k])
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return b
+	return b, nil
 }
 
-func appendField(b []byte, k string, v interface{}) []byte {
-	b = append(b, []byte(escape.String(k))...)
+func appendField(b []byte, k string, v interface{}) ([]byte, error) {
+	b = append(b, escape.String(k)...)
 	b = append(b, '=')
 
 	// check popular types first
 	switch v := v.(type) {
-	case float64:
-		b = strconv.AppendFloat(b, v, 'f', -1, 64)
-	case int64:
-		b = strconv.AppendInt(b, v, 10)
-		b = append(b, 'i')
-	case string:
-		b = append(b, '"')
-		b = append(b, []byte(EscapeStringField(v))...)
-		b = append(b, '"')
 	case bool:
-		b = strconv.AppendBool(b, v)
-	case int32:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
-	case int16:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
+		b = marshalBool(b, v)
+	case string:
+		b = marshalString(b, v)
 	case int8:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
-	case int:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
-	case uint64:
-		b = strconv.AppendUint(b, v, 10)
-		b = append(b, 'u')
-	case uint32:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
-	case uint16:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
+		b = marshalInt(b, v)
 	case uint8:
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
+		b = marshalUInt(b, v)
+	case int16:
+		b = marshalInt(b, v)
+	case uint16:
+		b = marshalUInt(b, v)
+	case int32:
+		b = marshalInt(b, v)
+	case uint32:
+		b = marshalUInt(b, v)
+	case int64:
+		b = marshalInt(b, v)
+	case uint64:
+		b = marshalUInt(b, v)
+	case int:
+		b = marshalInt(b, v)
 	case uint:
-		// TODO: 'uint' should be converted to writing as an unsigned integer,
-		// but we cannot since that would break backwards compatibility.
-		b = strconv.AppendInt(b, int64(v), 10)
-		b = append(b, 'i')
+		b = marshalUInt(b, v)
 	case float32:
-		b = strconv.AppendFloat(b, float64(v), 'f', -1, 32)
-	case []byte:
-		b = append(b, v...)
+		b = marshalFloat(b, v)
+	case float64:
+		b = marshalFloat(b, v)
+	case []bool:
+		b = marshalBools(b, v)
+	case []string:
+		b = marshalStrings(b, v)
+	case []int8:
+		b = marshalInts(b, v)
+	case []uint8:
+		b = marshalUints(b, v)
+	case []int16:
+		b = marshalInts(b, v)
+	case []uint16:
+		b = marshalUints(b, v)
+	case []int32:
+		b = marshalInts(b, v)
+	case []uint32:
+		b = marshalUints(b, v)
+	case []int64:
+		b = marshalInts(b, v)
+	case []uint64:
+		b = marshalUints(b, v)
+	case []float32:
+		b = marshalFloats(b, v)
+	case []float64:
+		b = marshalFloats(b, v)
+	case []any:
+		b = marshalAnys(b, v)
 	case nil:
 		// skip
 	default:
-		// Can't determine the type, so convert to string
-		b = append(b, '"')
-		b = append(b, []byte(EscapeStringField(fmt.Sprintf("%v", v)))...)
-		b = append(b, '"')
+		return nil, fmt.Errorf("unknown type %T", v)
+	}
+	return b, nil
+}
 
+func marshalBool(b []byte, v bool) []byte {
+	return strconv.AppendBool(b, v)
+}
+
+func marshalInt[T int8 | int16 | int32 | int64 | int](b []byte, v T) []byte {
+	b = strconv.AppendInt(b, int64(v), 10)
+	b = append(b, 'i')
+	return b
+}
+
+func marshalUInt[T uint8 | uint16 | uint32 | uint64 | uint](b []byte, v T) []byte {
+	b = strconv.AppendUint(b, uint64(v), 10)
+	b = append(b, 'u')
+	return b
+}
+
+func marshalFloat[T float32 | float64](b []byte, v T) []byte {
+	return strconv.AppendFloat(b, float64(v), 'f', -1, 64)
+}
+
+func marshalBools(b []byte, v []bool) []byte {
+	if len(v) == 0 {
+		return append(b, "[]"...)
+	}
+	b = append(b, '[')
+	for _, i := range v {
+		b = strconv.AppendBool(b, i)
+		b = append(b, ',')
+	}
+	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalString(b []byte, v string) []byte {
+	b = append(b, '"')
+	b = append(b, EscapeStringField(v)...)
+	b = append(b, '"')
+	return b
+}
+
+func marshalStrings(b []byte, v []string) []byte {
+	if len(v) == 0 {
+		return append(b, "[]"...)
+	}
+	b = append(b, '[')
+	for _, s := range v {
+		b = append(b, '"')
+		b = append(b, EscapeStringField(s)...)
+		b = append(b, '"')
+		b = append(b, ',')
+	}
+	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalInts[T int8 | int16 | int32 | int64 | int](b []byte, v []T) []byte {
+	if len(v) == 0 {
+		return append(b, "[]"...)
+	}
+	b = append(b, '[')
+	for _, i := range v {
+		b = strconv.AppendInt(b, int64(i), 10)
+		b = append(b, 'i')
+		b = append(b, ',')
+	}
+	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalUints[T uint8 | uint16 | uint32 | uint64 | uint](b []byte, v []T) []byte {
+	if len(v) == 0 {
+		return append(b, "[]"...)
+	}
+	b = append(b, '[')
+	for _, i := range v {
+		b = strconv.AppendUint(b, uint64(i), 10)
+		b = append(b, 'u')
+		b = append(b, ',')
+	}
+	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalFloats[T float32 | float64](b []byte, v []T) []byte {
+	if len(v) == 0 {
+		return append(b, "[]"...)
+	}
+	b = append(b, '[')
+	for _, i := range v {
+		b = strconv.AppendFloat(b, float64(i), 'f', -1, 64)
+		b = append(b, ',')
+	}
+	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalAnys(b []byte, arr []any) []byte {
+	if len(arr) == 0 {
+		return append(b, "[]"...)
 	}
 
+	b = append(b, '[')
+	for _, ent := range arr {
+		switch v := ent.(type) {
+		case uint8:
+			b = marshalUInt(b, v)
+			b = append(b, ',')
+		case uint16:
+			b = marshalUInt(b, v)
+			b = append(b, ',')
+		case uint32:
+			b = marshalUInt(b, v)
+			b = append(b, ',')
+		case uint64:
+			b = marshalUInt(b, v)
+			b = append(b, ',')
+		case uint:
+			b = marshalUInt(b, v)
+			b = append(b, ',')
+
+		case int8:
+			b = marshalInt(b, v)
+			b = append(b, ',')
+		case int16:
+			b = marshalInt(b, v)
+			b = append(b, ',')
+		case int32:
+			b = marshalInt(b, v)
+			b = append(b, ',')
+		case int64:
+			b = marshalInt(b, v)
+			b = append(b, ',')
+		case int:
+			b = marshalInt(b, v)
+			b = append(b, ',')
+
+		case bool:
+			b = marshalBool(b, v)
+			b = append(b, ',')
+
+		case float64:
+			b = marshalFloat(b, v)
+			b = append(b, ',')
+		case float32:
+			b = marshalFloat(b, v)
+			b = append(b, ',')
+		case string:
+			b = marshalString(b, v)
+			b = append(b, ',')
+		case []byte:
+			b = marshalString(b, string(v))
+			b = append(b, ',')
+		default: //pass
+		}
+	}
+
+	// replace last ',' as ']'
+	b[len(b)-1] = ']'
 	return b
 }
 
