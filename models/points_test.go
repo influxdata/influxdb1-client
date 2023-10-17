@@ -71,10 +71,76 @@ func TestMarshalFields(t *testing.T) {
 			value: true,
 			exp:   `value=true`,
 		},
+		{
+			name: "any-arr-with-uint",
+			value: []any{
+				uint8(1),
+				uint16(1),
+				uint32(1),
+				uint64(1),
+				uint(1),
+			},
+			exp: `value=[1u,1u,1u,1u,1u]`,
+		},
+		{
+			name: "any-arr-with-int",
+			value: []any{
+				int8(1),
+				int16(1),
+				int32(1),
+				int64(1),
+				int(1),
+			},
+			exp: `value=[1i,1i,1i,1i,1i]`,
+		},
+
+		{
+			name: "any-arr-with-float",
+			value: []any{
+				float32(1),
+				float64(1),
+			},
+			exp: `value=[1,1]`,
+		},
+
+		{
+			name: "any-arr-with-strings",
+			value: []any{
+				"1",
+				"1",
+			},
+			exp: `value=["1","1"]`,
+		},
+
+		{
+			name: "any-arr-with-[]byte",
+			value: []any{
+				[]byte("1"),
+				[]byte("1"),
+			},
+			exp: `value=["1","1"]`,
+		},
+
+		{
+			name:  "any-arr-with-bool",
+			value: []any{false, true},
+			exp:   `value=[false,true]`,
+		},
+
+		{
+			name:  "any-arr-with-mixed-types",
+			value: []any{false, true, 1, uint8(1), 3.14, "hello", []byte("world")},
+			exp:   `value=[false,true,1i,1u,3.14,"hello","world"]`,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fields := map[string]interface{}{"value": tt.value}
-			if have, want := models.Fields(fields).MarshalBinary(), []byte(tt.exp); !bytes.Equal(have, want) {
+			have, err := models.Fields(fields).MarshalBinary()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			want := []byte(tt.exp)
+			if !bytes.Equal(have, want) {
 				t.Fatalf("unexpected field output: %s != %s", string(have), string(want))
 			}
 		})
