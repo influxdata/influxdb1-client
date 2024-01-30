@@ -2364,6 +2364,9 @@ func detectValueType(s string) FieldType {
 	}
 	if len(s) > 0 && s[0] == '[' && s[len(s)-1] == ']' {
 		i := nextUnescapedChar(s[1:], ',')
+		if i == -1 {
+			i = len(s) - i - 3
+		}
 		switch detectValueType(s[1 : i+1]) {
 		case Boolean:
 			return BooleanArray

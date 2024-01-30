@@ -1277,12 +1277,12 @@ func TestParsePointUnescape(t *testing.T) {
 }
 
 func TestParsePointWithArrayFields(t *testing.T) {
-	test(t, `cpu,host=serverA,region=us-east strings=["foo","bar"],bools=[true,true],floats=[1.0,2.0],int64s=[1i,2i,3i],uint64s=[1u,2u,3u] 1000000000`,
+	test(t, `cpu,host=serverA,region=us-east strings=["foo","bar"],bools=[true],floats=[1.0,2.0],int64s=[1i,2i,3i],uint64s=[1u,2u,3u] 1000000000`,
 		NewTestPoint("cpu",
 			models.NewTags(map[string]string{"host": "serverA", "region": "us-east"}),
 			models.Fields{
 				"strings": []string{"foo", "bar"},
-				"bools":   []bool{true, true},
+				"bools":   []bool{true},
 				"floats":  []float64{1.0, 2.0},
 				"int64s":  []int64{1, 2, 3},
 				"uint64s": []uint64{1, 2, 3},
