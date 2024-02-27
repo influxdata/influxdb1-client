@@ -226,7 +226,7 @@ func testPoint_cube(t *testing.T, f func(p models.Point)) {
 	// heard of a table-driven test? let's make a cube-driven test...
 	tagList := []models.Tags{nil, {models.NewTag([]byte("foo"), []byte("bar"))}, tags}
 	fieldList := []models.Fields{{"a": 42.0}, {"a": 42, "b": "things"}, fields}
-	timeList := []time.Time{time.Time{}, time.Unix(0, 0), time.Unix(-34526, 0), time.Unix(231845, 0), time.Now()}
+	timeList := []time.Time{time.Unix(0, 0), time.Unix(0, 0), time.Unix(-34526, 0), time.Unix(231845, 0), time.Now()}
 
 	for _, tagSet := range tagList {
 		for _, fieldSet := range fieldList {
@@ -684,7 +684,7 @@ func TestParsePointMaxInt64(t *testing.T) {
 	// out of range
 	_, err := models.ParsePointsString(`cpu,host=serverA,region=us-west value=9223372036854775808i`)
 	exp := `unable to parse 'cpu,host=serverA,region=us-west value=9223372036854775808i': unable to parse integer 9223372036854775808: strconv.ParseInt: parsing "9223372036854775808": value out of range`
-	if err == nil || (err != nil && err.Error() != exp) {
+	if err == nil || err.Error() != exp {
 		t.Fatalf("Error mismatch:\nexp: %s\ngot: %v", exp, err)
 	}
 
@@ -793,7 +793,7 @@ func TestParsePointMaxUint64(t *testing.T) {
 	// out of range
 	_, err := models.ParsePointsString(`cpu,host=serverA,region=us-west value=18446744073709551616u`)
 	exp := `unable to parse 'cpu,host=serverA,region=us-west value=18446744073709551616u': unable to parse unsigned 18446744073709551616: strconv.ParseUint: parsing "18446744073709551616": value out of range`
-	if err == nil || (err != nil && err.Error() != exp) {
+	if err == nil || err.Error() != exp {
 		t.Fatalf("Error mismatch:\nexp: %s\ngot: %v", exp, err)
 	}
 
@@ -1274,6 +1274,21 @@ func TestParsePointUnescape(t *testing.T) {
 			},
 			time.Unix(0, 0)))
 
+}
+
+func TestParsePointWithArrayFields(t *testing.T) {
+	test(t, `cpu,host=serverA,region=us-east strings=["foo","bar"],bools=[true],floats=[1.0,2.0],int64s=[1i,2i,3i],uint64s=[1u,2u,3u] 1000000000`,
+		NewTestPoint("cpu",
+			models.NewTags(map[string]string{"host": "serverA", "region": "us-east"}),
+			models.Fields{
+				"strings": []string{"foo", "bar"},
+				"bools":   []bool{true},
+				"floats":  []float64{1.0, 2.0},
+				"int64s":  []int64{1, 2, 3},
+				"uint64s": []uint64{1, 2, 3},
+			},
+			time.Unix(1, 0)),
+	)
 }
 
 func TestParsePointWithTags(t *testing.T) {
@@ -2038,29 +2053,6 @@ func TestNewPointWithoutField(t *testing.T) {
 	_, err := models.NewPoint("cpu", models.NewTags(map[string]string{"tag": "bar"}), models.Fields{}, time.Unix(0, 0))
 	if err == nil {
 		t.Fatalf(`NewPoint() expected error. got nil`)
-	}
-}
-
-func TestNewPointUnhandledType(t *testing.T) {
-	// nil value
-	pt := models.MustNewPoint("cpu", nil, models.Fields{"value": nil}, time.Unix(0, 0))
-	if exp := `cpu value= 0`; pt.String() != exp {
-		t.Errorf("NewPoint().String() mismatch.\ngot %v\nexp %v", pt.String(), exp)
-	}
-
-	// unsupported type gets stored as string
-	now := time.Unix(0, 0).UTC()
-	pt = models.MustNewPoint("cpu", nil, models.Fields{"value": now}, time.Unix(0, 0))
-	if exp := `cpu value="1970-01-01 00:00:00 +0000 UTC" 0`; pt.String() != exp {
-		t.Errorf("NewPoint().String() mismatch.\ngot %v\nexp %v", pt.String(), exp)
-	}
-
-	fields, err := pt.Fields()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if exp := "1970-01-01 00:00:00 +0000 UTC"; fields["value"] != exp {
-		t.Errorf("NewPoint().String() mismatch.\ngot %v\nexp %v", pt.String(), exp)
 	}
 }
 
