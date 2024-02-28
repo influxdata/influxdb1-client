@@ -2382,7 +2382,7 @@ func detectValueType(s string) FieldType {
 			return Empty
 		}
 	}
-	if len(s) > 2 && s[0] == '"' && s[len(s)-1] == '"' {
+	if len(s) > 0 && s[0] == '"' {
 		return String
 	}
 	switch s[len(s)-1] {
