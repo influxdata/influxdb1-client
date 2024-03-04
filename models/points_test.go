@@ -2607,3 +2607,15 @@ func init() {
 	// Force uint support to be enabled for testing.
 	models.EnableUintSupport()
 }
+
+func TestErrOnParsePoints(t *testing.T) {
+
+	var buf []byte
+	buf = append(buf, []byte(`some1,t1=1,t2=v2 f1=1i,f2=3
+some2,t11111=1,t2 f1=1i,f2=3
+some3,t1=1,t2=v3 f1=1i,f2=3
+some2,t1=1,t2 f1=1i,f2=`)...)
+	_, err := models.ParsePointsWithPrecision(buf, time.Now().UTC(), "ns")
+
+	t.Logf("error: %s", err)
+}
