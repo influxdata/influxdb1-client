@@ -353,9 +353,9 @@ func ParseName(buf []byte) []byte {
 func ParsePointsWithPrecision(buf []byte, defaultTime time.Time, precision string) ([]Point, error) {
 	points := make([]Point, 0, bytes.Count(buf, []byte{'\n'})+1)
 	var (
-		pos    int
-		block  []byte
-		failed []string
+		prevPos, pos int
+		block        []byte
+		failed       []string
 	)
 	for pos < len(buf) {
 		pos, block = scanLine(buf, pos)
@@ -384,13 +384,16 @@ func ParsePointsWithPrecision(buf []byte, defaultTime time.Time, precision strin
 
 		pt, err := parsePoint(block[start:], defaultTime, precision)
 		if err != nil {
-			failed = append(failed, fmt.Sprintf("unable to parse '%s': %v", string(block[start:]), err))
+			failed = append(failed, fmt.Sprintf("unable to parse '%s'(pos: %d): %v",
+				string(block[start:]), prevPos+1, err))
 		} else {
 			points = append(points, pt)
 		}
 
+		prevPos = pos
 	}
 	if len(failed) > 0 {
+		failed = append(failed, fmt.Sprintf("with %d point parse ok, %d points failed", len(points), len(failed)))
 		return points, fmt.Errorf("%s", strings.Join(failed, "\n"))
 	}
 	return points, nil
