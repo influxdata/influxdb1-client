@@ -478,6 +478,15 @@ func test(t *testing.T, line string, point TestPoint) {
 	}
 }
 
+func TestParsePointFieldsContainsListAndNewLine(t *testing.T) {
+	lineStr := `m1,t1=v1 f1=["1","22"],f2="3\n4" 1709541240000000000`
+	_, err := models.ParsePointsString(lineStr)
+	if err != nil {
+		t.Errorf(`ParsePoints("%v") error`, err)
+	}
+	return
+}
+
 func TestParsePointNoValue(t *testing.T) {
 	pts, err := models.ParsePointsString("")
 	if err != nil {
