@@ -1176,6 +1176,8 @@ func scanLine(buf []byte, i int) (int, []byte) {
 	// this duplicates some of the functionality in scanFields
 	equals := 0
 	commas := 0
+	brackets := 0
+
 	for {
 		// reached the end of buf?
 		if i >= len(buf) {
@@ -1199,8 +1201,26 @@ func scanLine(buf []byte, i int) (int, []byte) {
 				equals++
 				continue
 			} else if !quoted && buf[i] == ',' {
+				// if , in list, ignore
+				if brackets == 0 {
+					commas++
+				}
 				i++
-				commas++
+				continue
+			} else if !quoted && buf[i] == '[' {
+				i++
+				brackets++
+				if brackets > 1 {
+					break
+				}
+				continue
+
+			} else if !quoted && buf[i] == ']' {
+				i++
+				brackets--
+				if brackets < 0 {
+					break
+				}
 				continue
 			} else if buf[i] == '"' && equals > commas {
 				i++
