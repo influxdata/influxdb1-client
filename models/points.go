@@ -3,6 +3,7 @@ package models
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -175,6 +176,9 @@ const (
 
 	// UnsignedArray indicates the field's type is an array of unsigned integers.
 	UnsignedArray
+
+	// Binary indicates the field's type is an []byte.
+	Binary
 )
 
 // FieldIterator provides a low-allocation interface to iterate through a point's fields.
@@ -196,6 +200,9 @@ type FieldIterator interface {
 
 	// UnsignedValue returns the unsigned value of the current field.
 	UnsignedValue() (uint64, error)
+
+	// BinaryValue returns the base64 encoded []byte value of the current field.
+	BinaryValue() ([]byte, error)
 
 	// BooleanValue returns the boolean value of the current field.
 	BooleanValue() (bool, error)
@@ -762,15 +769,18 @@ func less(buf []byte, indices []int, i, j int) bool {
 // scanFields scans buf, starting at i for the fields section of a point.  It returns
 // the ending position and the byte slice of the fields within buf.
 func scanFields(buf []byte, i int) (int, []byte, error) {
-	start := skipWhitespace(buf, i)
+	var (
+		start  = skipWhitespace(buf, i)
+		quoted = false
+
+		// tracks how many '=' we've seen
+		equals = 0
+
+		// tracks how many commas we've seen
+		commas = 0
+	)
+
 	i = start
-	quoted := false
-
-	// tracks how many '=' we've seen
-	equals := 0
-
-	// tracks how many commas we've seen
-	commas := 0
 
 	for {
 		// reached the end of buf?
@@ -789,6 +799,18 @@ func scanFields(buf []byte, i int) (int, []byte, error) {
 		// in the field key
 		if buf[i] == '"' && equals > commas {
 			quoted = !quoted
+
+			if !quoted && i+1 < len(buf) {
+				switch buf[i+1] {
+				case ',': // we have more field...
+				case ' ': // last field
+				case 'b': // base64-encode string
+					i++
+				default:
+					return i, buf[start:i], fmt.Errorf("invalid string, got tail char `%c'", buf[i+1])
+				}
+			}
+
 			i++
 			continue
 		}
@@ -1339,6 +1361,7 @@ func scanFieldValue(buf []byte, i int) (int, []byte) {
 		}
 		i++
 	}
+
 	return i, buf[start:i]
 }
 
@@ -1990,6 +2013,13 @@ func (p *point) unmarshalBinary() (Fields, error) {
 				return nil, fmt.Errorf("unable to unmarshal field %s: %s", string(iter.FieldKey()), err)
 			}
 			fields[string(iter.FieldKey())] = v
+		case Binary:
+			v, err := iter.BinaryValue()
+			if err != nil {
+				return nil, fmt.Errorf("unable to unmarshal field %s: %s", string(iter.FieldKey()), err)
+			}
+
+			fields[string(iter.FieldKey())] = v
 		}
 	}
 	return fields, nil
@@ -2385,6 +2415,7 @@ func detectValueType(s string) FieldType {
 		s == "f" || s == "F" || s == "False" || s == "FALSE" || s == "false" {
 		return Boolean
 	}
+
 	if len(s) > 0 && s[0] == '[' && s[len(s)-1] == ']' {
 		i := nextUnescapedChar(s[1:], ',')
 		if i == -1 {
@@ -2405,9 +2436,18 @@ func detectValueType(s string) FieldType {
 			return Empty
 		}
 	}
+
 	if len(s) > 0 && s[0] == '"' {
-		return String
+		switch s[len(s)-1] {
+		case 'b':
+			return Binary
+		case '"':
+			return String
+		default:
+			return Empty
+		}
 	}
+
 	switch s[len(s)-1] {
 	case 'i':
 		return Integer
@@ -2440,6 +2480,20 @@ func (p *point) IntegerValue() (int64, error) {
 		return 0, fmt.Errorf("unable to parse integer value %q: %v", p.it.valueBuf, err)
 	}
 	return n, nil
+}
+
+// BinaryValue returns base64 decoded []byte of the current field.
+func (p *point) BinaryValue() ([]byte, error) {
+	if len(p.it.valueBuf) <= 3 { // ""b
+		return nil, fmt.Errorf("invalid base64 string")
+	}
+
+	s := string(p.it.valueBuf[1 : len(p.it.valueBuf)-2])
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("base64: %w, b64 string: %s", err, s)
+	}
+	return raw, nil
 }
 
 // UnsignedValue returns the unsigned value of the current field.
@@ -2638,8 +2692,9 @@ func appendField(b []byte, k string, v interface{}) ([]byte, error) {
 		b = marshalStrings(b, v)
 	case []int8:
 		b = marshalInts(b, v)
-	case []uint8:
-		b = marshalUints(b, v)
+	case []uint8: // []byte
+		//b = marshalUints(b, v)
+		b = marshalBinary(b, v)
 	case []int16:
 		b = marshalInts(b, v)
 	case []uint16:
@@ -2732,6 +2787,17 @@ func marshalInts[T int8 | int16 | int32 | int64 | int](b []byte, v []T) []byte {
 		b = append(b, ',')
 	}
 	b[len(b)-1] = ']'
+	return b
+}
+
+func marshalBinary(b []byte, data []byte) []byte {
+	if data == nil {
+		return nil
+	}
+
+	b = append(b, '"')
+	b = append(b, base64.StdEncoding.EncodeToString(data)...)
+	b = append(b, `"b`...)
 	return b
 }
 
