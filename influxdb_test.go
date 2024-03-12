@@ -35,7 +35,8 @@ func BenchmarkWrite(b *testing.B) {
 
 	bp := client.BatchPoints{
 		Points: []client.Point{
-			{Fields: map[string]interface{}{"value": 101}}},
+			{Fields: map[string]interface{}{"value": 101}},
+		},
 	}
 	for i := 0; i < b.N; i++ {
 		r, err := c.Write(bp)
@@ -252,7 +253,7 @@ func TestClient_QueryContext(t *testing.T) {
 	}
 }
 
-func TestClient_QueryContext_Cancelled(t *testing.T) {
+func TestClient_QueryContext_Canceled(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data client.Response
 		w.WriteHeader(http.StatusOK)
@@ -274,7 +275,7 @@ func TestClient_QueryContext_Cancelled(t *testing.T) {
 
 	_, err = c.QueryContext(ctx, query)
 	if err == nil {
-		t.Fatalf("Since context was cancelled an error was expected, but got nil.")
+		t.Fatalf("Since context was canceled an error was expected, but got nil.")
 	}
 }
 
@@ -921,7 +922,6 @@ war3JNM1mGB3o2iAtuOJlFIKLpI1x+1e8pI=
 -----END CERTIFICATE-----
 `
 	cer, err := tls.X509KeyPair([]byte(cert), []byte(key))
-
 	if err != nil {
 		t.Fatalf("Received error: %v", err)
 	}

@@ -135,5 +135,4 @@ f\\\ x
 			t.Errorf("AppendUnescaped failed for %#q: got %#q, exp %#q", c, got, exp)
 		}
 	}
-
 }

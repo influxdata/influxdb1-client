@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	// DefaultHost is the default host used to connect to an InfluxDB instance
+	// DefaultHost is the default host used to connect to an InfluxDB instance.
 	DefaultHost = "localhost"
 
-	// DefaultPort is the default port used to connect to an InfluxDB instance
+	// DefaultPort is the default port used to connect to an InfluxDB instance.
 	DefaultPort = 8086
 
-	// DefaultTimeout is the default connection timeout used to connect to an InfluxDB instance
+	// DefaultTimeout is the default connection timeout used to connect to an InfluxDB instance.
 	DefaultTimeout = 0
 )
 
@@ -64,7 +64,7 @@ type Query struct {
 	NodeID int
 }
 
-// ParseConnectionString will parse a string to create a valid connection URL
+// ParseConnectionString will parse a string to create a valid connection URL.
 func ParseConnectionString(path string, ssl bool) (url.URL, error) {
 	var host string
 	var port int
@@ -106,7 +106,7 @@ func ParseConnectionString(path string, ssl bool) (url.URL, error) {
 // URL: The URL of the server connecting to.
 // Username/Password are optional. They will be passed via basic auth if provided.
 // UserAgent: If not provided, will default "InfluxDBClient",
-// Timeout: If not provided, will default to 0 (no timeout)
+// Timeout: If not provided, will default to 0 (no timeout).
 type Config struct {
 	URL              url.URL
 	UnixSocket       string
@@ -121,7 +121,7 @@ type Config struct {
 	TLS              *tls.Config
 }
 
-// NewConfig will create a config to be used in connecting to the client
+// NewConfig will create a config to be used in connecting to the client.
 func NewConfig() Config {
 	return Config{
 		Timeout: DefaultTimeout,
@@ -190,24 +190,24 @@ func NewClient(c Config) (*Client, error) {
 	return &client, nil
 }
 
-// SetAuth will update the username and passwords
+// SetAuth will update the username and passwords.
 func (c *Client) SetAuth(u, p string) {
 	c.username = u
 	c.password = p
 }
 
-// SetPrecision will update the precision
+// SetPrecision will update the precision.
 func (c *Client) SetPrecision(precision string) {
 	c.precision = precision
 }
 
-// Query sends a command to the server and returns the Response
+// Query sends a command to the server and returns the Response.
 func (c *Client) Query(q Query) (*Response, error) {
 	return c.QueryContext(context.Background(), q)
 }
 
 // QueryContext sends a command to the server and returns the Response
-// It uses a context that can be cancelled by the command line client
+// It uses a context that can be canceled by the command line client.
 func (c *Client) QueryContext(ctx context.Context, q Query) (*Response, error) {
 	u := c.url
 	u.Path = path.Join(u.Path, "query")
@@ -361,7 +361,7 @@ func (c *Client) Write(bp BatchPoints) (*Response, error) {
 	}
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		var err = fmt.Errorf(string(body))
+		err := fmt.Errorf(string(body))
 		response.Err = err
 		return &response, err
 	}
@@ -476,7 +476,7 @@ func (r *Result) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&o)
 }
 
-// UnmarshalJSON decodes the data into the Result struct
+// UnmarshalJSON decodes the data into the Result struct.
 func (r *Result) UnmarshalJSON(b []byte) error {
 	var o struct {
 		Series   []models.Row `json:"series,omitempty"`
@@ -521,7 +521,7 @@ func (r *Response) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&o)
 }
 
-// UnmarshalJSON decodes the data into the Response struct
+// UnmarshalJSON decodes the data into the Response struct.
 func (r *Response) UnmarshalJSON(b []byte) error {
 	var o struct {
 		Results []Result `json:"results,omitempty"`
@@ -607,7 +607,7 @@ func (r *ChunkedResponse) NextResponse() (*Response, error) {
 // Point defines the fields that will be written to the database
 // Measurement, Time, and Fields are required
 // Precision can be specified if the time is in epoch format (integer).
-// Valid values for Precision are n, u, ms, s, m, and h
+// Valid values for Precision are n, u, ms, s, m, and h.
 type Point struct {
 	Measurement string
 	Tags        map[string]string
@@ -619,7 +619,7 @@ type Point struct {
 
 // MarshalJSON will format the time in RFC3339Nano
 // Precision is also ignored as it is only used for writing, not reading
-// Or another way to say it is we always send back in nanosecond precision
+// Or another way to say it is we always send back in nanosecond precision.
 func (p *Point) MarshalJSON() ([]byte, error) {
 	point := struct {
 		Measurement string                 `json:"measurement,omitempty"`
@@ -653,7 +653,7 @@ func (p *Point) MarshalString() string {
 	return pt.PrecisionString(p.Precision)
 }
 
-// UnmarshalJSON decodes the data into the Point struct
+// UnmarshalJSON decodes the data into the Point struct.
 func (p *Point) UnmarshalJSON(b []byte) error {
 	var normal struct {
 		Measurement string                 `json:"measurement"`
@@ -711,7 +711,7 @@ func (p *Point) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Remove any notion of json.Number
+// Remove any notion of json.Number.
 func normalizeFields(fields map[string]interface{}) map[string]interface{} {
 	newFields := map[string]interface{}{}
 
@@ -736,7 +736,7 @@ func normalizeFields(fields map[string]interface{}) map[string]interface{} {
 // If tags are specified, they will be "merged" with all points. If a point already has that tag, it will be ignored.
 // If time is specified, it will be applied to any point with an empty time.
 // Precision can be specified if the time is in epoch format (integer).
-// Valid values for Precision are n, u, ms, s, m, and h
+// Valid values for Precision are n, u, ms, s, m, and h.
 type BatchPoints struct {
 	Points           []Point           `json:"points,omitempty"`
 	Database         string            `json:"database,omitempty"`
@@ -747,7 +747,7 @@ type BatchPoints struct {
 	WriteConsistency string            `json:"-"`
 }
 
-// UnmarshalJSON decodes the data into the BatchPoints struct
+// UnmarshalJSON decodes the data into the BatchPoints struct.
 func (bp *BatchPoints) UnmarshalJSON(b []byte) error {
 	var normal struct {
 		Points          []Point           `json:"points"`
@@ -829,7 +829,7 @@ func checkPointTypes(p Point) error {
 
 // helper functions
 
-// EpochToTime takes a unix epoch time and uses precision to return back a time.Time
+// EpochToTime takes a unix epoch time and uses precision to return back a time.Time.
 func EpochToTime(epoch int64, precision string) (time.Time, error) {
 	if precision == "" {
 		precision = "s"
@@ -854,7 +854,7 @@ func EpochToTime(epoch int64, precision string) (time.Time, error) {
 	return t, nil
 }
 
-// SetPrecision will round a time to the specified precision
+// SetPrecision will round a time to the specified precision.
 func SetPrecision(t time.Time, precision string) time.Time {
 	switch precision {
 	case "n":

@@ -14,7 +14,7 @@ func TestMarshalPointNoFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// It's unclear how this can ever happen, but we've observed points that were marshalled without any fields.
+	// It's unclear how this can ever happen, but we've observed points that were marshaled without any fields.
 	points[0].(*point).fields = []byte{}
 
 	if _, err := points[0].MarshalBinary(); err != ErrPointMustHaveAField {
@@ -54,6 +54,26 @@ func TestBinaryField(t *testing.T) {
 		t.Logf("expeted error: %s", err)
 	})
 
+	t.Run("parse-invalid-b64-string", func(t *testing.T) {
+		buf := []byte(`m1 f_d="invalid-base-64-string"b,f_s="some-string",f_b=F,f_f=1.0,f_i=2i,f_a=[1i,2i],f_u=32u 123`)
+		pt, err := parsePoint(buf, time.Now(), "n")
+		assert.NoError(t, err)
+
+		_, err = pt.Fields() // cant retrieve bad-base64-encoded field
+		assert.Error(t, err)
+		t.Logf("expeted error: %s", err)
+	})
+
+	t.Run("parse-invalid-b64-string", func(t *testing.T) {
+		buf := []byte(`m1 f_d=""b,f_s="some-string",f_b=F,f_f=1.0,f_i=2i,f_a=[1i,2i],f_u=32u 123`)
+		pt, err := parsePoint(buf, time.Now(), "n")
+		assert.NoError(t, err)
+
+		_, err = pt.Fields() // cant retrieve bad-base64-encoded field
+		assert.Error(t, err)
+		t.Logf("expeted error: %s", err)
+	})
+
 	t.Run("new-b64-field", func(t *testing.T) {
 		binData := []byte(`hello:😄`)
 		pt, err := NewPoint("some", nil, map[string]any{"f_d": binData}, time.Unix(0, 123))
@@ -68,5 +88,24 @@ func TestBinaryField(t *testing.T) {
 		fields, err := decodePt.Fields()
 		assert.NoError(t, err)
 		assert.Equal(t, binData, fields["f_d"])
+	})
+
+	t.Run("binary-array", func(t *testing.T) {
+		buf := []byte(`m1 f_d_arr=["MTIzCg=="b,"MTIzCg=="b, ] 123`)
+		pt, err := parsePoint(buf, time.Now(), "n")
+		require.NoError(t, err)
+
+		fields, err := pt.Fields()
+		_ = fields
+		assert.NoError(t, err)
+
+		assert.Equal(t, [][]byte{
+			[]byte("123\n"),
+			[]byte("123\n"),
+		}, fields["f_d_arr"])
+
+		for k, v := range fields {
+			t.Logf("%s: %q", k, v)
+		}
 	})
 }

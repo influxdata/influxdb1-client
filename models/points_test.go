@@ -162,6 +162,7 @@ func BenchmarkMarshal(b *testing.B) {
 		tags.HashKey()
 	}
 }
+
 func TestPoint_Tags(t *testing.T) {
 	examples := []struct {
 		Point string
@@ -194,7 +195,6 @@ func TestPoint_Tags(t *testing.T) {
 					t.Fatalf("got %#v (%s), expected %#v", tags, tags.String(), example.Tags)
 				}
 			}
-
 		})
 	}
 }
@@ -208,7 +208,6 @@ func TestPoint_StringSize(t *testing.T) {
 			t.Errorf("Incorrect length for %q. got %v, exp %v", s, l, len(s))
 		}
 	})
-
 }
 
 func TestPoint_AppendString(t *testing.T) {
@@ -1282,7 +1281,6 @@ func TestParsePointUnescape(t *testing.T) {
 				"value": int64(1),
 			},
 			time.Unix(0, 0)))
-
 }
 
 func TestParsePointWithArrayFields(t *testing.T) {
@@ -1359,7 +1357,6 @@ func TestParsePointWithStringField(t *testing.T) {
 			},
 			time.Unix(1, 0)),
 	)
-
 }
 
 func TestParsePointWithStringWithSpaces(t *testing.T) {
@@ -1506,7 +1503,6 @@ func TestParsePointsUnbalancedQuotedTags(t *testing.T) {
 	if pts[1].String() != exp.String() {
 		t.Errorf("Point mismatch:\ngot: %v\nexp: %v", pts[1].String(), exp.String())
 	}
-
 }
 
 func TestParsePointEscapedStringsAndCommas(t *testing.T) {
@@ -1702,6 +1698,7 @@ func TestNewPointFloatWithoutDecimal(t *testing.T) {
 			time.Unix(1, 0)),
 	)
 }
+
 func TestNewPointNegativeFloat(t *testing.T) {
 	test(t, `cpu value=-0.64 1000000000`,
 		NewTestPoint(
@@ -2081,7 +2078,6 @@ func TestMakeKeyEscaped(t *testing.T) {
 	if exp, got := `cpu\,load`, models.MakeKey([]byte(`cpu,load`), models.NewTags(map[string]string{})); string(got) != exp {
 		t.Errorf("MakeKey() mismatch.\ngot %v\nexp %v", got, exp)
 	}
-
 }
 
 func TestPrecisionString(t *testing.T) {
@@ -2320,11 +2316,9 @@ func TestNewPointsRejectsMaxKey(t *testing.T) {
 	if _, err := models.ParsePointsString(fmt.Sprintf("%v value=1,ok=2.0", key)); err == nil {
 		t.Fatalf("parse point with max key. got: nil, expected: error")
 	}
-
 }
 
 func TestPoint_FieldIterator_Simple(t *testing.T) {
-
 	p, err := models.ParsePoints([]byte(`m v=42i,f=42 36`))
 	if err != nil {
 		t.Fatal(err)
@@ -2403,7 +2397,6 @@ func toFields(fi models.FieldIterator) models.Fields {
 }
 
 func TestPoint_FieldIterator_FieldMap(t *testing.T) {
-
 	points, err := models.ParsePointsString(`
 m v=42
 m v=42i
@@ -2413,7 +2406,6 @@ m v="string\"with\"escapes"
 m v=42i,f=42,g=42.314,u=123u
 m a=2i,b=3i,c=true,d="stuff",e=-0.23,f=123.456
 `)
-
 	if err != nil {
 		t.Fatal("failed to parse test points:", err)
 	}
@@ -2618,7 +2610,6 @@ func init() {
 }
 
 func TestErrOnParsePoints(t *testing.T) {
-
 	var buf []byte
 	buf = append(buf, []byte(`some1,t1=1,t2=v2 f1=1i,f2=3
 some2,t11111=1,t2 f1=1i,f2=3

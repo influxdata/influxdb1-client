@@ -290,7 +290,6 @@ func TestClient500_Query(t *testing.T) {
 
 	query := Query{}
 	resp, err := c.Query(query)
-
 	if err != nil {
 		t.Errorf("unexpected error.  expected nothing, actual %v", err)
 	}
@@ -387,7 +386,6 @@ func TestClient500_ChunkedQuery(t *testing.T) {
 
 	query := Query{Chunked: true}
 	resp, err := c.Query(query)
-
 	if err != nil {
 		t.Errorf("unexpected error.  expected nothing, actual %v", err)
 	}
@@ -678,7 +676,6 @@ func TestClient_UserAgent(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		config := HTTPConfig{Addr: ts.URL, UserAgent: test.userAgent}
 		c, _ := NewHTTPClient(config)
 		defer c.Close()
@@ -972,7 +969,6 @@ func TestClient_ReadStatementId(t *testing.T) {
 	}
 
 	r, err := resp.NextResponse()
-
 	if err != nil {
 		t.Fatalf("expected success, got %s", err)
 	}
