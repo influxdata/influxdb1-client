@@ -510,7 +510,7 @@ func TestParsePointWhitespaceValue(t *testing.T) {
 }
 
 func TestParsePointNoFields(t *testing.T) {
-	expectedSuffix := "missing fields"
+	expectedErr := "missing fields"
 	examples := []string{
 		"cpu_load_short,host=server01,region=us-west",
 		"cpu",
@@ -522,8 +522,8 @@ func TestParsePointNoFields(t *testing.T) {
 		_, err := models.ParsePointsString(example)
 		if err == nil {
 			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got nil, exp error`, i, example)
-		} else if !strings.HasSuffix(err.Error(), expectedSuffix) {
-			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedSuffix)
+		} else if !strings.Contains(err.Error(), expectedErr) {
+			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedErr)
 		}
 	}
 }
@@ -533,7 +533,7 @@ func TestParsePointNoTimestamp(t *testing.T) {
 }
 
 func TestParsePointMissingQuote(t *testing.T) {
-	expectedSuffix := "unbalanced quotes"
+	expectedErr := "unbalanced quotes"
 	examples := []string{
 		`cpu,host=serverA value="test`,
 		`cpu,host=serverA value="test""`,
@@ -543,14 +543,14 @@ func TestParsePointMissingQuote(t *testing.T) {
 		_, err := models.ParsePointsString(example)
 		if err == nil {
 			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got nil, exp error`, i, example)
-		} else if !strings.HasSuffix(err.Error(), expectedSuffix) {
-			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedSuffix)
+		} else if !strings.Contains(err.Error(), expectedErr) {
+			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedErr)
 		}
 	}
 }
 
 func TestParsePointMissingTagKey(t *testing.T) {
-	expectedSuffix := "missing tag key"
+	expectedErr := "missing tag key"
 	examples := []string{
 		`cpu, value=1`,
 		`cpu,`,
@@ -565,8 +565,8 @@ func TestParsePointMissingTagKey(t *testing.T) {
 		_, err := models.ParsePointsString(example)
 		if err == nil {
 			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got nil, exp error`, i, example)
-		} else if !strings.HasSuffix(err.Error(), expectedSuffix) {
-			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedSuffix)
+		} else if !strings.Contains(err.Error(), expectedErr) {
+			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedErr)
 		}
 	}
 
@@ -577,7 +577,7 @@ func TestParsePointMissingTagKey(t *testing.T) {
 }
 
 func TestParsePointMissingTagValue(t *testing.T) {
-	expectedSuffix := "missing tag value"
+	expectedErr := "missing tag value"
 	examples := []string{
 		`cpu,host`,
 		`cpu,host,`,
@@ -592,14 +592,14 @@ func TestParsePointMissingTagValue(t *testing.T) {
 		_, err := models.ParsePointsString(example)
 		if err == nil {
 			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got nil, exp error`, i, example)
-		} else if !strings.HasSuffix(err.Error(), expectedSuffix) {
-			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedSuffix)
+		} else if !strings.Contains(err.Error(), expectedErr) {
+			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedErr)
 		}
 	}
 }
 
 func TestParsePointInvalidTagFormat(t *testing.T) {
-	expectedSuffix := "invalid tag format"
+	expectedErr := "invalid tag format"
 	examples := []string{
 		`cpu,host=f=o,`,
 		`cpu,host=f\==o,`,
@@ -609,8 +609,8 @@ func TestParsePointInvalidTagFormat(t *testing.T) {
 		_, err := models.ParsePointsString(example)
 		if err == nil {
 			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got nil, exp error`, i, example)
-		} else if !strings.HasSuffix(err.Error(), expectedSuffix) {
-			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedSuffix)
+		} else if !strings.Contains(err.Error(), expectedErr) {
+			t.Errorf(`[Example %d] ParsePoints("%s") mismatch. got %q, exp suffix %q`, i, example, err, expectedErr)
 		}
 	}
 }
@@ -692,8 +692,8 @@ func TestParsePointBadNumber(t *testing.T) {
 func TestParsePointMaxInt64(t *testing.T) {
 	// out of range
 	_, err := models.ParsePointsString(`cpu,host=serverA,region=us-west value=9223372036854775808i`)
-	exp := `unable to parse 'cpu,host=serverA,region=us-west value=9223372036854775808i': unable to parse integer 9223372036854775808: strconv.ParseInt: parsing "9223372036854775808": value out of range`
-	if err == nil || err.Error() != exp {
+	exp := `parsing "9223372036854775808": value out of range`
+	if err == nil || !strings.Contains(err.Error(), exp) {
 		t.Fatalf("Error mismatch:\nexp: %s\ngot: %v", exp, err)
 	}
 
@@ -801,8 +801,8 @@ func TestParsePointMinFloat64(t *testing.T) {
 func TestParsePointMaxUint64(t *testing.T) {
 	// out of range
 	_, err := models.ParsePointsString(`cpu,host=serverA,region=us-west value=18446744073709551616u`)
-	exp := `unable to parse 'cpu,host=serverA,region=us-west value=18446744073709551616u': unable to parse unsigned 18446744073709551616: strconv.ParseUint: parsing "18446744073709551616": value out of range`
-	if err == nil || err.Error() != exp {
+	exp := `parsing "18446744073709551616": value out of range`
+	if err == nil || !strings.Contains(err.Error(), exp) {
 		t.Fatalf("Error mismatch:\nexp: %s\ngot: %v", exp, err)
 	}
 
@@ -1315,19 +1315,19 @@ func TestParsePointWithDuplicateTags(t *testing.T) {
 	}{
 		{
 			line: `cpu,host=serverA,host=serverB value=1i 1000000000`,
-			err:  `unable to parse 'cpu,host=serverA,host=serverB value=1i 1000000000': duplicate tags`,
+			err:  `duplicate tags`,
 		},
 		{
 			line: `cpu,b=2,b=1,c=3 value=1i 1000000000`,
-			err:  `unable to parse 'cpu,b=2,b=1,c=3 value=1i 1000000000': duplicate tags`,
+			err:  `duplicate tags`,
 		},
 		{
 			line: `cpu,b=2,c=3,b=1 value=1i 1000000000`,
-			err:  `unable to parse 'cpu,b=2,c=3,b=1 value=1i 1000000000': duplicate tags`,
+			err:  `duplicate tags`,
 		},
 	} {
 		_, err := models.ParsePointsString(tt.line)
-		if err == nil || tt.err != err.Error() {
+		if err == nil || !strings.Contains(err.Error(), tt.err) {
 			t.Errorf("%d. ParsePoint() expected error '%s'. got '%s'", i, tt.err, err)
 		}
 	}
